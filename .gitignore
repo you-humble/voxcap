@@ -3,6 +3,7 @@
 
 # Recordings
 *.wav
+output/
 
 # Configs (local)
 config.json

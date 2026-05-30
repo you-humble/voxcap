@@ -1,0 +1,15 @@
+{
+    "sample_rate": 16000,
+    "channels": 1,
+    "bits_per_sample": 16,
+    "devices": [
+        {
+            "type": "loopback",
+            "output_file": "output/loopback.wav"
+        },
+        {
+            "type": "microphone",
+            "output_file": "output/mic.wav"
+        }
+    ]
+}

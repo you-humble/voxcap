@@ -7,11 +7,16 @@ import (
 )
 
 type Config struct {
-	OutputFile    string `json:"output_file"`
-	SampleRate    uint32 `json:"sample_rate"`
-	Channels      uint16 `json:"channels"`
-	BitsPerSample uint16 `json:"bits_per_sample"`
-	DeviceType    string `json:"device_type"`
+	SampleRate    uint32         `json:"sample_rate"`
+	Channels      uint16         `json:"channels"`
+	BitsPerSample uint16         `json:"bits_per_sample"`
+	Devices       []DeviceConfig `json:"devices"`
+}
+
+// DeviceConfig holds configuration for a single recording device.
+type DeviceConfig struct {
+	Type       string `json:"type"`        // "loopback" or "microphone"
+	OutputFile string `json:"output_file"` // path to output WAV file
 }
 
 func Load(explicitPath string) (*Config, error) {
@@ -27,6 +32,7 @@ func Load(explicitPath string) (*Config, error) {
 		return nil, fmt.Errorf("parsing config: %w", err)
 	}
 
+	// Apply defaults
 	if cfg.SampleRate == 0 {
 		cfg.SampleRate = 16000
 	}
@@ -36,8 +42,15 @@ func Load(explicitPath string) (*Config, error) {
 	if cfg.BitsPerSample == 0 {
 		cfg.BitsPerSample = 16
 	}
-	if cfg.OutputFile == "" {
-		cfg.OutputFile = "output.wav"
+
+	// Validate devices
+	for i, dev := range cfg.Devices {
+		if dev.Type != "loopback" && dev.Type != "microphone" {
+			return nil, fmt.Errorf("unsupported device type: %s", dev.Type)
+		}
+		if dev.OutputFile == "" {
+			cfg.Devices[i].OutputFile = fmt.Sprintf("output/%s.wav", dev.Type)
+		}
 	}
 
 	return &cfg, nil
@@ -52,5 +65,5 @@ func resolvePath(explicit string) string {
 	if env := os.Getenv("VOXCAP_CONFIG"); env != "" {
 		return env
 	}
-	return "config.json"
+	return "configs/config.json"
 }
