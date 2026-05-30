@@ -1,6 +1,22 @@
+# Binaries
 *.exe
-output.wav
-mic.wav
+
+# Recordings
 *.wav
-.cache/
+
+# Configs (local)
+config.json
+configs/*.json
+!configs/config.example.json
+
+# Dependencies
 vendor/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

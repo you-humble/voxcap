@@ -1,0 +1,29 @@
+version: "3"
+
+vars:
+  CC: x86_64-w64-mingw32-gcc
+  GOOS: windows
+  CGO_ENABLED: 1
+  EXE_NAME: voxcap.exe
+
+tasks:
+  build:
+    desc: Build the Windows executable from WSL
+    cmds:
+      - echo "Building {{.EXE_NAME}}..."
+      - CC={{.CC}} CGO_ENABLED={{.CGO_ENABLED}} GOOS={{.GOOS}} GOARCH=amd64 go build -o {{.EXE_NAME}} ./cmd/voxcap
+
+  run:
+    desc: Run the built executable from WSL (press Enter to stop)
+    cmds:
+      - ./{{.EXE_NAME}} -config=configs/config.json
+
+  clean:
+    desc: Remove generated files
+    cmds:
+      - rm -f {{.EXE_NAME}} output/*.wav
+
+  test:
+    desc: Run Go tests
+    cmds:
+      - go test ./...
