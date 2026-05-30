@@ -12,6 +12,7 @@ import (
 	"github.com/you-humble/voxcap/internal/config"
 	"github.com/you-humble/voxcap/internal/mix"
 	"github.com/you-humble/voxcap/internal/recorder"
+	"github.com/you-humble/voxcap/internal/transcribe"
 	"github.com/you-humble/voxcap/internal/ui"
 	"github.com/you-humble/voxcap/internal/wav"
 )
@@ -53,6 +54,8 @@ func (s *Session) HandleEvent(event ui.Event) (quit bool) {
 		s.discard()
 	case ui.EventMix:
 		s.mixLatest()
+	case ui.EventTranscribe:
+		s.transcribeLatest()
 	case ui.EventQuit:
 		s.quit()
 		return true
@@ -99,6 +102,27 @@ func (s *Session) toggle() {
 		s.state = StateRecording
 		s.ui.ShowStatus(ui.StatusRecording)
 	}
+}
+
+func (s *Session) TranscribeLatest() (string, error) {
+	mixedFiles, _ := filepath.Glob("output/mixed_*.wav")
+	if len(mixedFiles) == 0 {
+		return "", fmt.Errorf("no mixed files to transcribe")
+	}
+
+	latest := mixedFiles[len(mixedFiles)-1]
+
+	s.mixing = true
+	defer func() { s.mixing = false }()
+
+	fmt.Print("\r⏳ Transcribing...                ")
+
+	text, err := transcribe.Whisper(latest, s.cfg.WhisperPath, s.cfg.ModelPath)
+	if err != nil {
+		return "", err
+	}
+
+	return text, nil
 }
 
 func (s *Session) save() {
@@ -172,6 +196,22 @@ func (s *Session) mixLatest() {
 
 	s.ui.ShowStatus(ui.StatusMixed)
 	fmt.Printf("   %s\n", output)
+	s.ui.ShowStatus(ui.StatusReady)
+}
+
+func (s *Session) transcribeLatest() {
+	s.ui.ShowStatus(ui.StatusTranscribing)
+
+	text, err := s.TranscribeLatest()
+	if err != nil {
+		fmt.Printf("\rError: %v\n", err)
+		s.ui.ShowStatus(ui.StatusReady)
+		return
+	}
+
+	fmt.Print("\r✅ Transcript                    \n\n")
+	fmt.Println(text)
+	fmt.Println()
 	s.ui.ShowStatus(ui.StatusReady)
 }
 

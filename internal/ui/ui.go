@@ -4,11 +4,12 @@ package ui
 type Event int
 
 const (
-	EventToggle  Event = iota // Space
-	EventSave                 // S
-	EventDiscard              // R
-	EventMix                  // M
-	EventQuit                 // Q
+	EventToggle     Event = iota // Space
+	EventSave                    // S
+	EventDiscard                 // R
+	EventMix                     // M
+	EventTranscribe              // T
+	EventQuit                    // Q
 )
 
 // UI abstracts the user interface.
@@ -35,6 +36,7 @@ const (
 	StatusSaved
 	StatusDiscarded
 	StatusMixed
+	StatusTranscribing
 )
 
 // FileResult holds info about a saved file.

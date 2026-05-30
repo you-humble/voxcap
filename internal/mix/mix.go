@@ -22,9 +22,19 @@ func Mono(file1, file2, output string) error {
 		return fmt.Errorf("read %s: %w", file2, err)
 	}
 
-	// Skip 44-byte headers
 	samples1 := bytesToSamples(data1[44:])
 	samples2 := bytesToSamples(data2[44:])
+
+	// If one file is empty, just copy the other
+	if len(samples1) == 0 && len(samples2) == 0 {
+		return fmt.Errorf("both files are empty")
+	}
+	if len(samples1) == 0 {
+		return copyWAV(output, data2)
+	}
+	if len(samples2) == 0 {
+		return copyWAV(output, data1)
+	}
 
 	// Use shorter length
 	n := len(samples1)
@@ -44,23 +54,31 @@ func Mono(file1, file2, output string) error {
 		mixed[i] = int16(sum)
 	}
 
-	// Write output WAV
-	w, err := wav.New(output, 16000, 1, 16)
+	return writeWAV(output, mixed, 16000, 1, 16)
+}
+
+// copyWAV copies raw WAV bytes to output file.
+func copyWAV(output string, data []byte) error {
+	return os.WriteFile(output, data, 0644)
+}
+
+// writeWAV creates a WAV file from samples.
+func writeWAV(output string, samples []int16, sampleRate uint32, channels, bits uint16) error {
+	w, err := wav.New(output, sampleRate, channels, bits)
 	if err != nil {
-		return fmt.Errorf("create output: %w", err)
+		return err
 	}
 	defer w.Close()
 
-	for _, s := range mixed {
+	for _, s := range samples {
 		b := [2]byte{
 			byte(s & 0xFF),
 			byte((s >> 8) & 0xFF),
 		}
 		if _, err := w.WritePCM(b[:]); err != nil {
-			return fmt.Errorf("write sample: %w", err)
+			return err
 		}
 	}
-
 	return nil
 }
 

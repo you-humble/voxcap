@@ -1,9 +1,25 @@
 # Binaries
 *.exe
+*.dll
+!voxcap.exe
+
+# Whisper
+whisper.exe
+whisper.dll
+ggml.dll
+ggml-base.dll
+ggml-cpu.dll
+SDL2.dll
+Release/
+
+# Archives
+*.zip
 
 # Recordings
 *.wav
+*.txt
 output/
+models/
 
 # Configs (local)
 config.json

@@ -11,6 +11,8 @@ type Config struct {
 	Channels      uint16         `json:"channels"`
 	BitsPerSample uint16         `json:"bits_per_sample"`
 	Devices       []DeviceConfig `json:"devices"`
+	WhisperPath   string         `json:"whisper_path"`
+	ModelPath     string         `json:"model_path"`
 }
 
 // DeviceConfig holds configuration for a single recording device.
@@ -41,6 +43,13 @@ func Load(explicitPath string) (*Config, error) {
 	}
 	if cfg.BitsPerSample == 0 {
 		cfg.BitsPerSample = 16
+	}
+
+	if cfg.WhisperPath == "" {
+		cfg.WhisperPath = "whisper.exe"
+	}
+	if cfg.ModelPath == "" {
+		cfg.ModelPath = "models/ggml-base.bin"
 	}
 
 	// Validate devices
