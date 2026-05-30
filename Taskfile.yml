@@ -2,6 +2,7 @@ version: "3"
 
 vars:
   CC: x86_64-w64-mingw32-gcc
+  CXX: x86_64-w64-mingw32-g++
   GOOS: windows
   CGO_ENABLED: 1
   EXE_NAME: voxcap.exe
@@ -11,19 +12,37 @@ tasks:
     desc: Build the Windows executable from WSL
     cmds:
       - echo "Building {{.EXE_NAME}}..."
-      - CC={{.CC}} CGO_ENABLED={{.CGO_ENABLED}} GOOS={{.GOOS}} GOARCH=amd64 go build -o {{.EXE_NAME}} ./cmd/voxcap
+      - CC={{.CC}} CXX={{.CXX}} CGO_ENABLED={{.CGO_ENABLED}} GOOS={{.GOOS}} GOARCH=amd64 go build -o {{.EXE_NAME}} ./cmd/voxcap
 
   run:
-    desc: Run the built executable from WSL (press Enter to stop)
+    desc: Run the built executable
     cmds:
       - ./{{.EXE_NAME}} -config=configs/config.json
+
+  test:
+    desc: Run unit tests
+    cmds:
+      - go test ./internal/wav ./internal/config -v
+
+  lint:
+    desc: Run linters
+    cmds:
+      - golangci-lint run ./...
+
+  fmt:
+    desc: Format code
+    cmds:
+      - gofmt -w .
+      - goimports -w -local github.com/you-humble/voxcap .
 
   clean:
     desc: Remove generated files
     cmds:
       - rm -f {{.EXE_NAME}} output/*.wav
 
-  test:
-    desc: Run Go tests
+  all:
+    desc: Lint, test, build
     cmds:
-      - go test ./...
+      - task: lint
+      - task: test
+      - task: build

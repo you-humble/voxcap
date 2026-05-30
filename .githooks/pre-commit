@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+echo "Running linter..."
+golangci-lint run ./...
+
+echo "Running tests..."
+go test ./internal/...
+
+echo "Checking formatting..."
+unformatted=$(gofmt -l .)
+if [ -n "$unformatted" ]; then
+  echo "Files not formatted: $unformatted"
+  exit 1
+fi

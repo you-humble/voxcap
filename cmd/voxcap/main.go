@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/gen2brain/malgo"
+
 	"github.com/you-humble/voxcap/internal/config"
 	"github.com/you-humble/voxcap/internal/input"
 	"github.com/you-humble/voxcap/internal/session"

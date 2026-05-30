@@ -20,7 +20,11 @@ func New(filename string, sampleRate uint32, channels, bitsPerSample uint16) (*W
 		return nil, err
 	}
 
-	f.Write(make([]byte, 44))
+	if _, err := f.Write(make([]byte, 44)); err != nil {
+		f.Close()
+		return nil, err
+	}
+
 	return &Writer{
 		file:          f,
 		sampleRate:    sampleRate,
@@ -57,52 +61,52 @@ func (w *Writer) writeWAVHeader() error {
 	byteRate := w.sampleRate * uint32(w.channels) * uint32(w.bitsPerSample) / 8
 	blockAlign := w.channels * w.bitsPerSample / 8
 
-	writeBytes := func(data []byte) error {
-		_, err := w.file.Write(data)
-		return err
-	}
-
-	writeBinary := func(v interface{}) error {
+	write := func(v interface{}) error {
 		return binary.Write(w.file, binary.LittleEndian, v)
 	}
 
-	if err := writeBytes([]byte("RIFF")); err != nil {
+	// RIFF header
+	if _, err := w.file.Write([]byte("RIFF")); err != nil {
 		return fmt.Errorf("write 'RIFF': %w", err)
 	}
-	if err := writeBinary(uint32(36 + w.dataSize)); err != nil {
+	if err := write(uint32(36) + w.dataSize); err != nil {
 		return fmt.Errorf("write riff size: %w", err)
 	}
-	if err := writeBytes([]byte("WAVE")); err != nil {
+	if _, err := w.file.Write([]byte("WAVE")); err != nil {
 		return fmt.Errorf("write 'WAVE': %w", err)
 	}
-	if err := writeBytes([]byte("fmt ")); err != nil {
+
+	// fmt subchunk
+	if _, err := w.file.Write([]byte("fmt ")); err != nil {
 		return fmt.Errorf("write 'fmt ': %w", err)
 	}
-	if err := writeBinary(uint32(16)); err != nil {
+	if err := write(uint32(16)); err != nil {
 		return fmt.Errorf("write fmt chunk size: %w", err)
 	}
-	if err := writeBinary(uint16(1)); err != nil {
-		return fmt.Errorf("write audio format (PCM): %w", err)
+	if err := write(uint16(1)); err != nil {
+		return fmt.Errorf("write audio format: %w", err)
 	}
-	if err := writeBinary(w.channels); err != nil {
+	if err := write(w.channels); err != nil {
 		return fmt.Errorf("write channels: %w", err)
 	}
-	if err := writeBinary(w.sampleRate); err != nil {
+	if err := write(w.sampleRate); err != nil {
 		return fmt.Errorf("write sample rate: %w", err)
 	}
-	if err := writeBinary(byteRate); err != nil {
+	if err := write(byteRate); err != nil {
 		return fmt.Errorf("write byte rate: %w", err)
 	}
-	if err := writeBinary(blockAlign); err != nil {
+	if err := write(blockAlign); err != nil {
 		return fmt.Errorf("write block align: %w", err)
 	}
-	if err := writeBinary(w.bitsPerSample); err != nil {
+	if err := write(w.bitsPerSample); err != nil {
 		return fmt.Errorf("write bits per sample: %w", err)
 	}
-	if err := writeBytes([]byte("data")); err != nil {
+
+	// data subchunk
+	if _, err := w.file.Write([]byte("data")); err != nil {
 		return fmt.Errorf("write 'data': %w", err)
 	}
-	if err := writeBinary(w.dataSize); err != nil {
+	if err := write(w.dataSize); err != nil {
 		return fmt.Errorf("write data size: %w", err)
 	}
 

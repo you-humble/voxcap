@@ -2,11 +2,13 @@ package session
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/gen2brain/malgo"
+
 	"github.com/you-humble/voxcap/internal/config"
 	"github.com/you-humble/voxcap/internal/recorder"
 	"github.com/you-humble/voxcap/internal/ui"
@@ -89,7 +91,9 @@ func (s *Session) save() {
 		s.pause()
 	}
 	for _, r := range s.recs {
-		r.Save()
+		if err := r.Save(); err != nil {
+			log.Printf("Save error: %v", err)
+		}
 	}
 	s.recs = nil
 	s.state = StateIdle
@@ -103,10 +107,14 @@ func (s *Session) discard() {
 		s.pause()
 	}
 	for _, r := range s.recs {
-		r.Discard()
+		if err := r.Discard(); err != nil {
+			log.Printf("Discard error: %v", err)
+		}
 	}
 	for _, d := range s.cfg.Devices {
-		os.Remove(d.OutputFile)
+		if err := os.Remove(d.OutputFile); err != nil {
+			log.Printf("Remove error: %v", err)
+		}
 	}
 	s.recs = nil
 	s.state = StateIdle
@@ -122,7 +130,6 @@ func (s *Session) quit() {
 
 func (s *Session) start() error {
 	for _, devCfg := range s.cfg.Devices {
-		// Generate unique filename with timestamp
 		ext := filepath.Ext(devCfg.OutputFile)
 		base := devCfg.OutputFile[:len(devCfg.OutputFile)-len(ext)]
 		filename := fmt.Sprintf("%s_%s%s", base, time.Now().Format("20060102_150405"), ext)
@@ -132,7 +139,6 @@ func (s *Session) start() error {
 			return fmt.Errorf("wav: %w", err)
 		}
 
-		// Update output file so Results() and discard() use the right path
 		devCfg.OutputFile = filename
 
 		dt := malgo.Capture
@@ -156,12 +162,16 @@ func (s *Session) start() error {
 
 func (s *Session) pause() {
 	for _, r := range s.recs {
-		r.Pause()
+		if err := r.Pause(); err != nil {
+			log.Printf("Pause error: %v", err)
+		}
 	}
 }
 
 func (s *Session) resume() {
 	for _, r := range s.recs {
-		r.Resume()
+		if err := r.Resume(); err != nil {
+			log.Printf("Resume error: %v", err)
+		}
 	}
 }

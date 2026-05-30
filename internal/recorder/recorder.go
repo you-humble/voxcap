@@ -1,7 +1,10 @@
 package recorder
 
 import (
+	"log"
+
 	"github.com/gen2brain/malgo"
+
 	"github.com/you-humble/voxcap/internal/wav"
 )
 
@@ -23,7 +26,9 @@ func NewRecorder(
 	r := &Recorder{writer: writer}
 
 	onData := func(_, input []byte, _ uint32) {
-		r.writer.WritePCM(input)
+		if _, err := r.writer.WritePCM(input); err != nil {
+			log.Printf("WritePCM error: %v", err)
+		}
 	}
 
 	device, err := malgo.InitDevice(
@@ -42,24 +47,24 @@ func (r *Recorder) Start() error {
 	return r.device.Start()
 }
 
-// Pause stops the device but keeps the file open for appending.
 func (r *Recorder) Pause() error {
 	return r.device.Stop()
 }
 
-// Resume restarts the device, appending to the same file.
 func (r *Recorder) Resume() error {
 	return r.device.Start()
 }
 
-// Save stops the device and finalizes the WAV file.
 func (r *Recorder) Save() error {
-	r.device.Stop()
+	if err := r.device.Stop(); err != nil {
+		return err
+	}
 	return r.writer.Close()
 }
 
-// Discard stops the device and closes the file without fixing header.
 func (r *Recorder) Discard() error {
-	r.device.Stop()
+	if err := r.device.Stop(); err != nil {
+		return err
+	}
 	return r.writer.CloseWithoutHeader()
 }

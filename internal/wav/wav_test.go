@@ -54,103 +54,102 @@ func TestWritePCM(t *testing.T) {
 }
 
 func TestWriteWAVHeader(t *testing.T) {
-	w, err := New("test.wav", 16000, 1, 16)
+	w, err := New("test_header.wav", 16000, 1, 16)
 	if err != nil {
 		t.Fatalf("New() error: %v", err)
 	}
-	defer os.Remove("test.wav")
 
-	data := []byte{0, 1, 2, 3}
-	w.WritePCM(data)
-	w.Close()
-
-	f, err := os.Open("test.wav")
-	if err != nil {
-		t.Fatalf("Open() error: %v", err)
+	data := []byte{0x01, 0x02, 0x03, 0x04}
+	if _, err := w.WritePCM(data); err != nil {
+		t.Fatalf("WritePCM() error: %v", err)
 	}
-	defer f.Close()
+	if err := w.Close(); err != nil {
+		t.Fatalf("Close() error: %v", err)
+	}
+	defer os.Remove("test_header.wav")
+
+	// Read file back
+	raw, err := os.ReadFile("test_header.wav")
+	if err != nil {
+		t.Fatalf("ReadFile() error: %v", err)
+	}
+
+	if len(raw) < 44+4 {
+		t.Fatalf("file too short: %d bytes", len(raw))
+	}
 
 	// RIFF
-	riff := make([]byte, 4)
-	f.Read(riff)
-	if string(riff) != "RIFF" {
-		t.Errorf("header = %s, want RIFF", string(riff))
+	if string(raw[0:4]) != "RIFF" {
+		t.Errorf("chunkID = %s, want RIFF", string(raw[0:4]))
 	}
 
-	// File size
-	var fileSize uint32
-	binary.Read(f, binary.LittleEndian, &fileSize)
-	expectedSize := uint32(36 + 4)
-	if fileSize != expectedSize {
-		t.Errorf("fileSize = %d, want %d", fileSize, expectedSize)
+	// ChunkSize (36 + dataSize)
+	chunkSize := binary.LittleEndian.Uint32(raw[4:8])
+	expectedChunkSize := uint32(36 + 4)
+	if chunkSize != expectedChunkSize {
+		t.Errorf("chunkSize = %d, want %d", chunkSize, expectedChunkSize)
 	}
 
-	// WAVE
-	wave := make([]byte, 4)
-	f.Read(wave)
-	if string(wave) != "WAVE" {
-		t.Errorf("wave = %s, want WAVE", string(wave))
+	// Format
+	if string(raw[8:12]) != "WAVE" {
+		t.Errorf("format = %s, want WAVE", string(raw[8:12]))
 	}
 
-	// fmt
-	fmtChunk := make([]byte, 4)
-	f.Read(fmtChunk)
-	if string(fmtChunk) != "fmt " {
-		t.Errorf("fmt = %s, want 'fmt '", string(fmtChunk))
+	// Subchunk1ID
+	if string(raw[12:16]) != "fmt " {
+		t.Errorf("subchunk1ID = %s, want 'fmt '", string(raw[12:16]))
 	}
 
 	// Subchunk1Size
-	var subchunk1Size uint32
-	binary.Read(f, binary.LittleEndian, &subchunk1Size)
+	subchunk1Size := binary.LittleEndian.Uint32(raw[16:20])
 	if subchunk1Size != 16 {
 		t.Errorf("subchunk1Size = %d, want 16", subchunk1Size)
 	}
 
-	// Audio format
-	var audioFormat uint16
-	binary.Read(f, binary.LittleEndian, &audioFormat)
+	// AudioFormat
+	audioFormat := binary.LittleEndian.Uint16(raw[20:22])
 	if audioFormat != 1 {
-		t.Errorf("audioFormat = %d, want 1", audioFormat)
+		t.Errorf("audioFormat = %d, want 1 (PCM)", audioFormat)
 	}
 
-	// Channels
-	var channels uint16
-	binary.Read(f, binary.LittleEndian, &channels)
-	if channels != 1 {
-		t.Errorf("channels = %d, want 1", channels)
+	// NumChannels
+	numChannels := binary.LittleEndian.Uint16(raw[22:24])
+	if numChannels != 1 {
+		t.Errorf("numChannels = %d, want 1", numChannels)
 	}
 
-	// Sample rate
-	var sampleRate uint32
-	binary.Read(f, binary.LittleEndian, &sampleRate)
+	// SampleRate
+	sampleRate := binary.LittleEndian.Uint32(raw[24:28])
 	if sampleRate != 16000 {
 		t.Errorf("sampleRate = %d, want 16000", sampleRate)
 	}
 
-	// Byte rate
-	var byteRate uint32
-	binary.Read(f, binary.LittleEndian, &byteRate)
+	// ByteRate
+	_ = binary.LittleEndian.Uint32(raw[28:32]) // skip
 
-	// Block align
-	var blockAlign uint16
-	binary.Read(f, binary.LittleEndian, &blockAlign)
+	// BlockAlign
+	_ = binary.LittleEndian.Uint16(raw[32:34]) // skip
 
-	// Bits per sample
-	var bitsPerSample uint16
-	binary.Read(f, binary.LittleEndian, &bitsPerSample)
-
-	// data
-	dataChunk := make([]byte, 4)
-	f.Read(dataChunk)
-	if string(dataChunk) != "data" {
-		t.Errorf("data chunk = %s, want 'data'", string(dataChunk))
+	// BitsPerSample
+	bitsPerSample := binary.LittleEndian.Uint16(raw[34:36])
+	if bitsPerSample != 16 {
+		t.Errorf("bitsPerSample = %d, want 16", bitsPerSample)
 	}
 
-	// Data size
-	var dataSize uint32
-	binary.Read(f, binary.LittleEndian, &dataSize)
-	if dataSize != 4 {
-		t.Errorf("dataSize = %d, want 4", dataSize)
+	// Subchunk2ID
+	if string(raw[36:40]) != "data" {
+		t.Errorf("subchunk2ID = %s, want 'data'", string(raw[36:40]))
+	}
+
+	// Subchunk2Size
+	subchunk2Size := binary.LittleEndian.Uint32(raw[40:44])
+	if subchunk2Size != 4 {
+		t.Errorf("subchunk2Size = %d, want 4", subchunk2Size)
+	}
+
+	// Verify data bytes
+	if raw[44] != 0x01 || raw[45] != 0x02 || raw[46] != 0x03 || raw[47] != 0x04 {
+		t.Errorf("data = %x, want 01020304", raw[44:48])
 	}
 }
 
