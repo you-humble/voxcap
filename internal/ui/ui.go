@@ -7,6 +7,7 @@ const (
 	EventToggle  Event = iota // Space
 	EventSave                 // S
 	EventDiscard              // R
+	EventMix                  // M
 	EventQuit                 // Q
 )
 
@@ -33,6 +34,7 @@ const (
 	StatusPaused
 	StatusSaved
 	StatusDiscarded
+	StatusMixed
 )
 
 // FileResult holds info about a saved file.

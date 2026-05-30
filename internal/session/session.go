@@ -10,6 +10,7 @@ import (
 	"github.com/gen2brain/malgo"
 
 	"github.com/you-humble/voxcap/internal/config"
+	"github.com/you-humble/voxcap/internal/mix"
 	"github.com/you-humble/voxcap/internal/recorder"
 	"github.com/you-humble/voxcap/internal/ui"
 	"github.com/you-humble/voxcap/internal/wav"
@@ -24,11 +25,14 @@ const (
 )
 
 type Session struct {
-	ctx   *malgo.AllocatedContext
-	cfg   *config.Config
-	state State
-	recs  []*recorder.Recorder
-	ui    ui.UI
+	ctx           *malgo.AllocatedContext
+	cfg           *config.Config
+	state         State
+	recs          []*recorder.Recorder
+	ui            ui.UI
+	mixing        bool
+	lastMixInput  string
+	lastMixOutput string
 }
 
 func New(ctx *malgo.AllocatedContext, cfg *config.Config, u ui.UI) *Session {
@@ -36,6 +40,10 @@ func New(ctx *malgo.AllocatedContext, cfg *config.Config, u ui.UI) *Session {
 }
 
 func (s *Session) HandleEvent(event ui.Event) (quit bool) {
+	if s.mixing {
+		return false
+	}
+
 	switch event {
 	case ui.EventToggle:
 		s.toggle()
@@ -43,6 +51,8 @@ func (s *Session) HandleEvent(event ui.Event) (quit bool) {
 		s.save()
 	case ui.EventDiscard:
 		s.discard()
+	case ui.EventMix:
+		s.mixLatest()
 	case ui.EventQuit:
 		s.quit()
 		return true
@@ -62,6 +72,11 @@ func (s *Session) Results() []ui.FileResult {
 		}
 	}
 	return results
+}
+
+// MixLatest mixes the most recent loopback and mic recordings.
+func (s *Session) MixLatest() (string, error) {
+	return mix.MixLatest("output/loopback_*.wav", "output/mic_*.wav")
 }
 
 func (s *Session) toggle() {
@@ -119,6 +134,44 @@ func (s *Session) discard() {
 	s.recs = nil
 	s.state = StateIdle
 	s.ui.ShowStatus(ui.StatusDiscarded)
+	s.ui.ShowStatus(ui.StatusReady)
+}
+
+func (s *Session) mixLatest() {
+	// Don't mix if already mixed these files
+	loopFiles, _ := filepath.Glob("output/loopback_*.wav")
+	micFiles, _ := filepath.Glob("output/mic_*.wav")
+
+	if len(loopFiles) == 0 || len(micFiles) == 0 {
+		fmt.Printf("No files to mix\n")
+		return
+	}
+
+	loopFile := loopFiles[len(loopFiles)-1]
+	micFile := micFiles[len(micFiles)-1]
+
+	// Deduplicate: don't mix the same pair twice
+	pairKey := loopFile + "|" + micFile
+	if pairKey == s.lastMixInput {
+		// fmt.Printf("Already mixed: %s\n", s.lastMixOutput)
+		return
+	}
+
+	fmt.Print("\r⏳ Mixing...                      ")
+	s.mixing = true
+	defer func() { s.mixing = false }()
+
+	output := fmt.Sprintf("output/mixed_%s.wav", time.Now().Format("20060102_150405"))
+	if err := mix.Mono(loopFile, micFile, output); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	s.lastMixInput = pairKey
+	s.lastMixOutput = output
+
+	s.ui.ShowStatus(ui.StatusMixed)
+	fmt.Printf("   %s\n", output)
 	s.ui.ShowStatus(ui.StatusReady)
 }
 

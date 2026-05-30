@@ -21,6 +21,7 @@ func (t *Terminal) Init() error {
 	fmt.Println("   [Space] Start/Pause/Resume")
 	fmt.Println("   [S]     Save")
 	fmt.Println("   [R]     Discard")
+	fmt.Println("   [M]     Mix latest")
 	fmt.Println("   [Q]     Quit")
 	fmt.Println()
 	return nil
@@ -46,6 +47,8 @@ func (t *Terminal) WaitEvent() (Event, error) {
 			return EventDiscard, nil
 		case 'q', 'Q':
 			return EventQuit, nil
+		case 'm', 'M':
+			return EventMix, nil
 		}
 	}
 }
@@ -60,6 +63,8 @@ func (t *Terminal) ShowStatus(status Status) {
 		fmt.Print("\r⏸️  Paused... (Space=resume, S=save, R=reset)    ")
 	case StatusSaved:
 		fmt.Print("\r✅ Saved                          \n\n")
+	case StatusMixed:
+		fmt.Print("\r✅ Mixed                          \n\n")
 	case StatusDiscarded:
 		fmt.Print("\r🗑️  Discarded                      \n\n")
 	}
