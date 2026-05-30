@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2
+          args: --timeout=5m
+
+      - name: Test
+        run: go test ./internal/wav ./internal/config -v
+
+  build:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Install MinGW
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+
+      - name: Build
+        run: |
+          CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -o voxcap.exe ./cmd/voxcap
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxcap-windows
+          path: voxcap.exe
