@@ -52,6 +52,9 @@ func Load(explicitPath string) (*Config, error) {
 			cfg.Devices[i].OutputFile = fmt.Sprintf("output/%s.wav", dev.Type)
 		}
 	}
+	if len(cfg.Devices) == 0 {
+		return nil, fmt.Errorf("no devices configured")
+	}
 
 	return &cfg, nil
 }
