@@ -16,14 +16,12 @@ func NewRecorder(
 	writer *wav.Writer,
 ) (*Recorder, error) {
 	cfg := malgo.DefaultDeviceConfig(deviceType)
-	cfg.Capture.Format = malgo.FormatS16 // 16-bit samples
-	cfg.Capture.Channels = 1             // mono
-	cfg.SampleRate = 16000               // 16 kHz (formaat Whisper)
+	cfg.Capture.Format = malgo.FormatS16
+	cfg.Capture.Channels = 1
+	cfg.SampleRate = 16000
 
 	r := &Recorder{writer: writer}
 
-	// Callback, whitch malgo runs in a separate flow,
-	// when the new sample is ready.
 	onData := func(_, input []byte, _ uint32) {
 		r.writer.WritePCM(input)
 	}
@@ -44,7 +42,24 @@ func (r *Recorder) Start() error {
 	return r.device.Start()
 }
 
-func (r *Recorder) Stop() error {
-	r.device.Uninit()
+// Pause stops the device but keeps the file open for appending.
+func (r *Recorder) Pause() error {
+	return r.device.Stop()
+}
+
+// Resume restarts the device, appending to the same file.
+func (r *Recorder) Resume() error {
+	return r.device.Start()
+}
+
+// Save stops the device and finalizes the WAV file.
+func (r *Recorder) Save() error {
+	r.device.Stop()
 	return r.writer.Close()
+}
+
+// Discard stops the device and closes the file without fixing header.
+func (r *Recorder) Discard() error {
+	r.device.Stop()
+	return r.writer.CloseWithoutHeader()
 }

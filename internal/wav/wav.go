@@ -45,6 +45,10 @@ func (w *Writer) Close() error {
 	return w.file.Close()
 }
 
+func (w *Writer) CloseWithoutHeader() error {
+	return w.file.Close()
+}
+
 func (w *Writer) writeWAVHeader() error {
 	if _, err := w.file.Seek(0, 0); err != nil {
 		return fmt.Errorf("seek to start: %w", err)
